@@ -1,4 +1,3 @@
-
 package br.com.usina.api_pi.controller;
 
 import br.com.usina.api_pi.model.Usuarios;
@@ -8,7 +7,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/usuarios")
@@ -18,6 +19,33 @@ public class UsuariosController {
 
     public UsuariosController(UsuariosRepository repository) {
         this.repository = repository;
+    }
+
+    // Login: o front chama POST /usuarios/login com { email, senha }
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> body) {
+        String email = body.get("email") == null ? "" : body.get("email").trim();
+        String senha = body.get("senha") == null ? "" : body.get("senha");
+
+        return repository.findFirstByEmailIgnoreCaseAndSenha(email, senha)
+                .map(u -> {
+                    // Nunca devolve a senha para o front
+                    Map<String, Object> usuario = new LinkedHashMap<>();
+                    usuario.put("id", u.getId());
+                    usuario.put("nome", u.getNome());
+                    usuario.put("email", u.getEmail());
+
+                    Map<String, Object> resposta = new LinkedHashMap<>();
+                    resposta.put("success", true);
+                    resposta.put("usuario", usuario);
+                    return ResponseEntity.ok(resposta);
+                })
+                .orElseGet(() -> {
+                    Map<String, Object> resposta = new LinkedHashMap<>();
+                    resposta.put("success", false);
+                    resposta.put("message", "Email ou senha inválidos");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(resposta);
+                });
     }
 
     @GetMapping
